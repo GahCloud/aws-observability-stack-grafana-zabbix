@@ -32,14 +32,6 @@ resource "aws_security_group" "monitoring_sg" {
   }
 
   ingress {
-    description = "Permitir porta personalizada 8080 n8n"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ingress_cidrs
-  }
-
-  ingress {
     description = "Permitir porta personalizada 10051 zabbix"
     from_port   = 10051
     to_port     = 10051
@@ -51,14 +43,6 @@ resource "aws_security_group" "monitoring_sg" {
     description = "Permitir porta personalizada 3000 grafana"
     from_port   = 3000
     to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ingress_cidrs
-  }
-
-  ingress {
-    description = "Permitir porta personalizada 5678 n8n"
-    from_port   = 5678
-    to_port     = 5678
     protocol    = "tcp"
     cidr_blocks = var.allowed_ingress_cidrs
   }
@@ -75,70 +59,6 @@ resource "aws_security_group" "monitoring_sg" {
   tags = {
     Name = "monitoramento-sg"
   }
-}
-
-# Cria a Role IAM para a instância EC2
-
-resource "aws_iam_role" "ec2_s3_billing_role" {
-  name = "monitoramento-ec2-s3-getcosts" # Nome único para a role IAM
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-# Anexa a política de acesso apenas ao bucket criado
-
-resource "aws_iam_role_policy" "s3_bucket_access" {
-  name = "AllowSpecificS3BucketAccess"
-  role = aws_iam_role.ec2_s3_billing_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ],
-        Resource = [
-          "arn:aws:s3:::monitoramento-savionit-backups",
-          "arn:aws:s3:::monitoramento-savionit-backups/*"
-        ]
-      }
-    ]
-  })
-}
-
-# Anexa a política de acesso somente leitura ao faturamento
-
-resource "aws_iam_role_policy_attachment" "billing_read_only" {
-  role       = aws_iam_role.ec2_s3_billing_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSBillingReadOnlyAccess"
-}
-
-# Cria o Perfil de Instância IAM
-
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-s3-billing-profile" # Nome único para o perfil de instância
-  role = aws_iam_role.ec2_s3_billing_role.name
-  # Garante que a role seja criada antes do perfil
-  depends_on = [
-    aws_iam_role.ec2_s3_billing_role,
-    aws_iam_role_policy_attachment.billing_read_only,
-    aws_iam_role_policy.s3_bucket_access
-  ]
 }
 
 # Cria a Instância EC2
@@ -170,7 +90,7 @@ resource "aws_instance" "monitoring_instance" {
   ]
 
   tags = {
-    Name = "monitoramento-savionit"
+    Name = "monitoramento"
   }
 }
 
